@@ -4,7 +4,7 @@ import tkinter as tk
 from tkinter import simpledialog, scrolledtext
 
 # Client Configuration
-HOST = '127.0.0.1'  # Should match the server's IP
+HOST = '10.74.0.95'  # Should match the server's IP
 PORT = 5555
 
 # Set up the client socket

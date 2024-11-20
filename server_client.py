@@ -4,7 +4,7 @@ import tkinter as tk
 from tkinter import scrolledtext
 
 # Server configuration
-HOST = '127.0.0.1'  # Localhost; use server IP if on a network
+HOST = '0.0.0.0'  # Localhost; use server IP if on a netwo
 PORT = 5555
 
 # Set up the server socket
