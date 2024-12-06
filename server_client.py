@@ -2,6 +2,52 @@ import socket
 import threading
 import tkinter as tk
 from tkinter import scrolledtext
+import random
+
+def append_crc(message):
+    generator = '10011'
+    message = ''.join(format(ord(char), '08b') for char in message)
+    k = len(message)
+    n = len(generator) - 1
+    padded_message = message + '0' * n
+    remainder = modulo2_division(padded_message, generator)
+    transmitted_message = message + remainder
+
+    # Simulate a 5% chance of error
+    if random.random() < 0.05:
+        bit_to_flip = random.randint(0, len(transmitted_message) - 1)
+        transmitted_message = (
+            transmitted_message[:bit_to_flip] +
+            ('1' if transmitted_message[bit_to_flip] == '0' else '0') +
+            transmitted_message[bit_to_flip + 1:]
+        )
+
+    return transmitted_message
+
+def validate_crc(received_message):
+    try:
+        generator = '10011'
+        k = len(received_message) - (len(generator) - 1)
+        original_message = received_message[:k]
+        remainder = modulo2_division(received_message, generator)
+        is_valid = int(remainder) == 0
+        return is_valid, original_message
+    except Exception as e:
+        print(f"[ERROR] CRC validation failed: {e}")
+        return False, ""
+
+
+def modulo2_division(dividend, divisor):
+    n = len(divisor)
+    remainder = list(dividend[:n])
+    for i in range(n, len(dividend) + 1):
+        if remainder[0] == '1':  # Perform XOR if the first bit is 1
+            for j in range(1, n):
+                remainder[j] = '0' if remainder[j] == divisor[j] else '1'
+        remainder = remainder[1:]  # Drop the used bit
+        if i < len(dividend):
+            remainder.append(dividend[i])
+    return ''.join(remainder)
 
 # Server configuration
 HOST = '0.0.0.0'  # Localhost; use server IP if on a netwo
@@ -36,25 +82,37 @@ def update_chat(message):
 
 # Function to broadcast messages to all clients
 def broadcast(message):
+    if isinstance(message, str):
+        message = message.encode('utf-8')  # Ensure bytes
+    print(f"[DEBUG] Broadcasting: {message.decode('utf-8')}")
     for client in clients:
-        client.send(message)
+        try:
+            client.send(message)
+        except Exception as e:
+            print(f"[ERROR] broadcast: {e}")
+
+
 
 # Function to handle each client
 def handle_client(client):
     while True:
         try:
             message = client.recv(1024)
+            if not message:
+                raise ConnectionResetError  # Handle clean disconnects
             update_chat(message.decode('utf-8'))
             broadcast(message)
-        except:
+        except Exception as e:
             index = clients.index(client)
             nickname = nicknames[index]
             clients.remove(client)
             nicknames.remove(nickname)
             client.close()
+            print(f"[ERROR] Client {nickname} disconnected: {e}")
             broadcast(f"{nickname} has left the chat.".encode('utf-8'))
             update_chat(f"{nickname} has left the chat.")
             break
+
 
 # Function to accept clients and start their threads
 def receive_clients():
